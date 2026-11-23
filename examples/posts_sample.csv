@@ -1,0 +1,8 @@
+title,author,publish_date,visitors,url
+Tuning InnoDB Buffer Pool for Large Servers,Asha,2026-03-16,5200,https://example.com/innodb-buffer-pool
+PostgreSQL Vacuum Explained,Ravi,2026-04-05,4800,https://example.com/pg-vacuum
+MongoDB Index Strategies,Meera,2026-05-20,3100,https://example.com/mongo-indexes
+ProxySQL Query Rules Deep Dive,Karthik,2026-06-14,2500,https://example.com/proxysql-rules
+Patroni Failover Testing,Divya,2026-06-15,1500,https://example.com/patroni-failover
+Valkey Persistence Options,Sanjay,2026-06-20,2200,https://example.com/valkey-persistence
+XtraBackup Incremental Backups,Priya,2026-03-10,6000,https://example.com/xtrabackup-incremental

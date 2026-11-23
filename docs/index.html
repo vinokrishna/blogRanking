@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blog Ranking</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #fff; --text: #1d2330; --muted: #667085; --line: #e4e7ec;
+    --accent: #2f5bea; --accent-soft: #e8eefe; --ok: #1a7f4b; --ok-soft: #e3f5ec;
+    --warn: #9a5b00; --warn-soft: #fdf1dc; --bad: #b42318; --bad-soft: #fde8e6;
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --card: #1a1f28; --text: #e6e9ef; --muted: #98a2b3; --line: #2c3340;
+      --accent: #7b9cff; --accent-soft: #232c45; --ok: #5fd39a; --ok-soft: #173327;
+      --warn: #f4b860; --warn-soft: #3a2c14; --bad: #ff8a80; --bad-soft: #3d1c1a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         background: var(--bg); color: var(--text); }
+  main { max-width: 1180px; margin: 0 auto; padding: 28px 20px 60px; }
+  header h1 { margin: 0 0 4px; font-size: 24px; }
+  header p { margin: 0 0 22px; color: var(--muted); }
+  a { color: var(--accent); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 18px; }
+  .card h2 { margin: 0 0 14px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+  .step { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+          background: var(--accent); color: #fff; font-size: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  input, select { width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 7px;
+                  background: var(--bg); color: var(--text); font: inherit; }
+  input:focus, select:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  .window { margin-top: 14px; padding: 10px 12px; border-radius: 8px; background: var(--accent-soft); }
+  details { margin-top: 12px; }
+  summary { cursor: pointer; color: var(--muted); }
+  details .grid { margin-top: 10px; }
+  .btn { padding: 7px 13px; border: 1px solid var(--line); border-radius: 7px; background: var(--card);
+         color: var(--text); font: inherit; cursor: pointer; white-space: nowrap; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.danger:hover { border-color: var(--bad); color: var(--bad); }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; align-items: center; }
+  .toolbar .spacer { flex: 1; }
+  .addform { display: grid; grid-template-columns: 1.1fr 2fr 2fr 1fr 0.9fr auto; gap: 10px; align-items: end; }
+  @media (max-width: 860px) { .addform { grid-template-columns: 1fr 1fr; } }
+  .tablewrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  #postsTable input { padding: 5px 7px; min-width: 90px; }
+  #postsTable td.title input, #postsTable td.url input { min-width: 180px; }
+  .chip { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 12px; white-space: nowrap; }
+  .chip.ok { background: var(--ok-soft); color: var(--ok); }
+  .chip.warn { background: var(--warn-soft); color: var(--warn); }
+  .chip.bad { background: var(--bad-soft); color: var(--bad); }
+  .empty { color: var(--muted); padding: 18px 4px; text-align: center; }
+  .winner { padding: 14px 16px; border-radius: 8px; background: var(--ok-soft); color: var(--ok); margin-bottom: 14px; font-size: 15px; }
+  .winner strong { color: var(--text); }
+  .bar { min-width: 190px; }
+  .bar div { display: flex; align-items: center; gap: 10px; }
+  .bar b { width: 46px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .bar i { flex: 1; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+  .bar i span { display: block; height: 100%; background: var(--accent); }
+  tr.first td { font-weight: 600; }
+  .muted { color: var(--muted); }
+  .excluded { margin-top: 16px; }
+  .excluded li { margin: 3px 0; }
+  .note { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg);
+           padding: 8px 16px; border-radius: 8px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #toast.show { opacity: .95; }
+  code { background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Blog Ranking</h1>
+    <p>Pick the quarter's blog award winner fairly across publish dates. Score = visitors ÷ √(days live), shown as each post's share of the quarter.
+       <a href="https://github.com/" id="logicLink" target="_blank" rel="noopener">How it works</a></p>
+  </header>
+
+  <!-- 1. Settings -->
+  <section class="card">
+    <h2><span class="step">1</span> Quarter</h2>
+    <div class="grid">
+      <div><label for="quarter">Quarter</label>
+        <select id="quarter"><option value="1">Q1</option><option value="2">Q2</option><option value="3">Q3</option><option value="4">Q4</option></select></div>
+      <div><label for="year">Year</label><input id="year" type="number" min="2000" max="2100"></div>
+      <div style="grid-column: span 2"><label for="method">Scoring method</label>
+        <select id="method">
+          <option value="sqrt">Visitors ÷ √days (recommended)</option>
+          <option value="perday">Visitors ÷ days</option>
+          <option value="raw">Total visitors</option>
+        </select></div>
+      <div><label for="minVisitors">Minimum visitors</label><input id="minVisitors" type="number" min="0" step="1"></div>
+    </div>
+    <div class="window" id="windowInfo"></div>
+    <details>
+      <summary>Advanced</summary>
+      <div class="grid">
+        <div><label for="shiftDays">Window shift (days)</label><input id="shiftDays" type="number" min="1" max="27"></div>
+        <div><label for="lagDays">Count visitors after (days)</label><input id="lagDays" type="number" min="0" max="365"></div>
+        <div><label for="snapshot">Snapshot date override</label><input id="snapshot" type="date"></div>
+      </div>
+      <p class="note">Leave the snapshot override empty to use window end + lag (Jul 15 for Q2). Set it if you pulled the numbers on a different day.</p>
+    </details>
+  </section>
+
+  <!-- 2. Posts / CSV builder -->
+  <section class="card">
+    <h2><span class="step">2</span> Posts</h2>
+    <form class="addform" id="addForm" autocomplete="off">
+      <div><label for="fAuthor">Name</label><input id="fAuthor" required placeholder="Asha"></div>
+      <div><label for="fTitle">Blog title</label><input id="fTitle" required placeholder="Tuning InnoDB Buffer Pool"></div>
+      <div><label for="fUrl">Link</label><input id="fUrl" type="url" placeholder="https://…"></div>
+      <div><label for="fDate">Date posted</label><input id="fDate" type="date" required></div>
+      <div><label for="fVisitors">Visitors</label><input id="fVisitors" type="number" min="0" step="1" placeholder="optional"></div>
+      <div><button class="btn primary" type="submit">Add post</button></div>
+    </form>
+
+    <div class="toolbar">
+      <button class="btn" id="importBtn" type="button">Import CSV</button>
+      <input id="importFile" type="file" accept=".csv,text/csv" hidden>
+      <button class="btn" id="exportBtn" type="button">Download CSV</button>
+      <button class="btn" id="sampleBtn" type="button">Load sample</button>
+      <span class="spacer"></span>
+      <span class="muted" id="postCount"></span>
+      <button class="btn danger" id="clearBtn" type="button">Clear all</button>
+    </div>
+
+    <div class="tablewrap">
+      <table id="postsTable">
+        <thead><tr><th>Name</th><th>Blog title</th><th>Link</th><th>Date posted</th><th class="num">Visitors</th><th>Counts for</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="note">Visitors can be left blank while you collect posts during the quarter. Fill them in on the snapshot date.
+      <em>Download CSV</em> saves a file the command-line tool reads directly. Your posts are kept only in this browser.</p>
+  </section>
+
+  <!-- 3. Results -->
+  <section class="card">
+    <h2><span class="step">3</span> Results</h2>
+    <div id="winner"></div>
+    <div class="tablewrap">
+      <table id="resultsTable">
+        <thead><tr><th class="num">Rank</th><th>Blog title</th><th>Name</th><th>Posted</th><th class="num">Visitors</th><th class="num">Days live</th><th class="num">Score</th><th>Share</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="toolbar">
+      <button class="btn" id="copyMdBtn" type="button">Copy as Markdown</button>
+      <button class="btn" id="resultsCsvBtn" type="button">Download results CSV</button>
+    </div>
+    <div class="excluded" id="excluded"></div>
+  </section>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ------------------------------------------------------------------ dates
+  var DAY = 86400000;
+  var MONTHS = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+  function mk(y, m, d) {
+    var dt = new Date(Date.UTC(y, m - 1, d));
+    return (dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d) ? dt : null;
+  }
+  function addDays(d, n) { return new Date(d.getTime() + n * DAY); }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function iso(d) { return d.getUTCFullYear() + "-" + pad(d.getUTCMonth() + 1) + "-" + pad(d.getUTCDate()); }
+  function pretty(d) {
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  }
+  // Same formats as blog_ranking.py: YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY, DD-Mon-YYYY, DD Mon YYYY
+  function parseDate(s) {
+    s = String(s || "").trim();
+    var m;
+    if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) return mk(+m[1], +m[2], +m[3]);
+    if ((m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/))) return mk(+m[3], +m[2], +m[1]);
+    if ((m = s.match(/^(\d{1,2})[ -]([A-Za-z]{3})[ -](\d{4})$/))) {
+      var mi = MONTHS.indexOf(m[2].toLowerCase());
+      return mi < 0 ? null : mk(+m[3], mi + 1, +m[1]);
+    }
+    return null;
+  }
+  function parseVisitors(v) {
+    var s = String(v == null ? "" : v).replace(/[,_\s]/g, "");
+    if (s === "") return null;
+    var n = Math.floor(Number(s));
+    return isFinite(n) && n >= 0 ? n : NaN;
+  }
+
+  // ------------------------------------------------------------------ logic (mirrors blog_ranking.py)
+  function eligibilityWindow(q, y, shift) {
+    var end = mk(y, q * 3, shift);
+    var start = q === 1 ? mk(y - 1, 12, shift + 1) : mk(y, (q - 1) * 3, shift + 1);
+    return { start: start, end: end };
+  }
+  function quarterOf(d, shift) {
+    var y = d.getUTCFullYear(), m = d.getUTCMonth() + 1, q = Math.ceil(m / 3);
+    if (m % 3 === 0 && d.getUTCDate() > shift) { q += 1; if (q === 5) { q = 1; y += 1; } }
+    return { q: q, y: y };
+  }
+  function daysLive(pub, snap) { return Math.round((snap - pub) / DAY) + 1; }
+  function score(v, days, method) {
+    if (method === "perday") return v / days;
+    if (method === "raw") return v;
+    return v / Math.sqrt(days);
+  }
+  function rank(posts, start, end, snap, method, minV) {
+    var eligible = [], excluded = [];
+    posts.forEach(function (p) {
+      var pub = parseDate(p.date), v = parseVisitors(p.visitors), reason = null;
+      if (!pub) reason = "missing or invalid date";
+      else if (pub < start) reason = "published before window (earlier quarter)";
+      else if (pub > end) reason = "published after window (next quarter)";
+      else if (pub > snap) reason = "published after snapshot date";
+      else if (v === null) reason = "visitors not filled in";
+      else if (isNaN(v)) reason = "visitors is not a number";
+      else if (v < minV) reason = "below minimum of " + minV + " visitors";
+      if (reason) { excluded.push({ p: p, reason: reason, pub: pub }); return; }
+      var d = daysLive(pub, snap);
+      eligible.push({ p: p, pub: pub, visitors: v, days: d, score: score(v, d, method) });
+    });
+    var total = eligible.reduce(function (a, r) { return a + r.score; }, 0);
+    eligible.forEach(function (r) { r.pct = total > 0 ? r.score / total * 100 : 0; });
+    eligible.sort(function (a, b) { return (b.score - a.score) || (b.visitors - a.visitors) || (a.pub - b.pub); });
+    var prev = null, rk = 0;
+    eligible.forEach(function (r, i) {
+      var key = Math.round(r.score * 1e6) / 1e6;
+      if (key !== prev) { rk = i + 1; prev = key; }
+      r.rank = rk;
+    });
+    return { ranked: eligible, excluded: excluded };
+  }
+
+  // ------------------------------------------------------------------ CSV
+  function parseCSV(text) {
+    text = text.replace(/^﻿/, "");
+    var rows = [], row = [], f = "", q = false, i, c;
+    for (i = 0; i < text.length; i++) {
+      c = text[i];
+      if (q) {
+        if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; }
+        else f += c;
+      } else if (c === '"') q = true;
+      else if (c === ",") { row.push(f); f = ""; }
+      else if (c === "\n" || c === "\r") {
+        if (c === "\r" && text[i + 1] === "\n") i++;
+        row.push(f); rows.push(row); row = []; f = "";
+      } else f += c;
+    }
+    if (f !== "" || row.length) { row.push(f); rows.push(row); }
+    return rows.filter(function (r) { return r.some(function (x) { return x.trim() !== ""; }); });
+  }
+  function csvCell(v) {
+    v = v == null ? "" : String(v);
+    return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }
+  function toCSV(header, rows) {
+    return [header].concat(rows).map(function (r) { return r.map(csvCell).join(","); }).join("\n") + "\n";
+  }
+  var ALIASES = {
+    title: ["title", "post", "blog", "blog title", "post title"],
+    author: ["author", "name", "writer", "owner"],
+    date: ["publish_date", "published", "publish date", "date", "posted", "posted_on", "date posted"],
+    visitors: ["visitors", "unique visitors", "unique_visitors", "users", "views"],
+    url: ["url", "link"]
+  };
+  function importCSV(text) {
+    var rows = parseCSV(text);
+    if (!rows.length) throw new Error("The file is empty.");
+    var head = rows[0].map(function (h) { return h.trim().toLowerCase(); }), col = {};
+    Object.keys(ALIASES).forEach(function (k) {
+      for (var j = 0; j < ALIASES[k].length; j++) {
+        var idx = head.indexOf(ALIASES[k][j]);
+        if (idx >= 0) { col[k] = idx; break; }
+      }
+    });
+    var missing = ["title", "author", "date"].filter(function (k) { return col[k] === undefined; });
+    if (missing.length) throw new Error("Missing column(s): " + missing.join(", "));
+    var bad = 0;
+    var posts = rows.slice(1).map(function (r) {
+      var raw = (r[col.date] || "").trim(), d = parseDate(raw);
+      if (!d) bad++;
+      return {
+        id: uid(),
+        author: (r[col.author] || "").trim(),
+        title: (r[col.title] || "").trim(),
+        url: col.url !== undefined ? (r[col.url] || "").trim() : "",
+        date: d ? iso(d) : raw,
+        visitors: col.visitors !== undefined ? (r[col.visitors] || "").replace(/[,_\s]/g, "") : ""
+      };
+    });
+    return { posts: posts, bad: bad };
+  }
+  function download(name, text) {
+    var blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+
+  // ------------------------------------------------------------------ state
+  var KEY = "blogRanking.v1";
+  function uid() { return Math.random().toString(36).slice(2, 10); }
+  function defaults() {
+    var now = new Date(), q = Math.ceil((now.getMonth() + 1) / 3) - 1, y = now.getFullYear();
+    if (q === 0) { q = 4; y -= 1; }
+    return { settings: { quarter: q, year: y, method: "sqrt", minVisitors: 0, shiftDays: 15, lagDays: 30, snapshot: "" }, posts: [] };
+  }
+  function load() {
+    try {
+      var s = JSON.parse(localStorage.getItem(KEY));
+      if (s && s.settings && Array.isArray(s.posts)) {
+        var d = defaults();
+        Object.keys(d.settings).forEach(function (k) { if (s.settings[k] === undefined) s.settings[k] = d.settings[k]; });
+        return s;
+      }
+    } catch (e) { /* storage unavailable */ }
+    return defaults();
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ } }
+  var state = load();
+
+  var SAMPLE = [
+    ["Asha", "Tuning InnoDB Buffer Pool for Large Servers", "https://example.com/innodb-buffer-pool", "2026-03-16", "5200"],
+    ["Ravi", "PostgreSQL Vacuum Explained", "https://example.com/pg-vacuum", "2026-04-05", "4800"],
+    ["Meera", "MongoDB Index Strategies", "https://example.com/mongo-indexes", "2026-05-20", "3100"],
+    ["Karthik", "ProxySQL Query Rules Deep Dive", "https://example.com/proxysql-rules", "2026-06-14", "2500"],
+    ["Divya", "Patroni Failover Testing", "https://example.com/patroni-failover", "2026-06-15", "1500"],
+    ["Sanjay", "Valkey Persistence Options", "https://example.com/valkey-persistence", "2026-06-20", "2200"],
+    ["Priya", "XtraBackup Incremental Backups", "https://example.com/xtrabackup-incremental", "2026-03-10", "6000"]
+  ];
+
+  // ------------------------------------------------------------------ helpers
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function safeUrl(u) { return /^https?:\/\//i.test(String(u || "").trim()) ? String(u).trim() : ""; }
+  function fmt(n, dp) { return n.toLocaleString("en-US", { minimumFractionDigits: dp, maximumFractionDigits: dp }); }
+  var toastTimer;
+  function toast(msg) {
+    var t = $("toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove("show"); }, 2200);
+  }
+  function settings() {
+    var s = state.settings;
+    var shift = Math.min(27, Math.max(1, parseInt(s.shiftDays, 10) || 15));
+    var lag = Math.max(0, parseInt(s.lagDays, 10) || 0);
+    var q = parseInt(s.quarter, 10) || 1, y = parseInt(s.year, 10) || new Date().getFullYear();
+    var w = eligibilityWindow(q, y, shift);
+    var snap = parseDate(s.snapshot) || addDays(w.end, lag);
+    if (snap < w.end) snap = w.end;
+    return { q: q, y: y, shift: shift, start: w.start, end: w.end, snap: snap,
+             method: s.method, minV: Math.max(0, parseInt(s.minVisitors, 10) || 0) };
+  }
+
+  // ------------------------------------------------------------------ render
+  function renderSettings() {
+    var s = state.settings;
+    $("quarter").value = s.quarter; $("year").value = s.year; $("method").value = s.method;
+    $("minVisitors").value = s.minVisitors; $("shiftDays").value = s.shiftDays;
+    $("lagDays").value = s.lagDays; $("snapshot").value = s.snapshot || "";
+  }
+  function renderWindow(c) {
+    $("windowInfo").innerHTML = "<strong>Q" + c.q + " " + c.y + "</strong> &middot; posts published <strong>" +
+      pretty(c.start) + " – " + pretty(c.end) + "</strong> &middot; visitors counted as of <strong>" + pretty(c.snap) + "</strong>";
+  }
+  function statusChip(p, c) {
+    var d = parseDate(p.date);
+    if (!d) return '<span class="chip bad">Invalid date</span>';
+    var qo = quarterOf(d, c.shift), label = "Q" + qo.q + " " + qo.y;
+    if (d >= c.start && d <= c.end) {
+      var v = parseVisitors(p.visitors);
+      if (v === null) return '<span class="chip warn">' + label + " &middot; needs visitors</span>";
+      if (isNaN(v)) return '<span class="chip bad">Bad visitors</span>';
+      return '<span class="chip ok">' + label + "</span>";
+    }
+    return '<span class="chip warn">' + label + "</span>";
+  }
+  function renderPosts(c) {
+    var tb = $("postsTable").querySelector("tbody");
+    $("postCount").textContent = state.posts.length + " post" + (state.posts.length === 1 ? "" : "s");
+    if (!state.posts.length) {
+      tb.innerHTML = '<tr><td colspan="7" class="empty">No posts yet. Add one above, import a CSV, or load the sample.</td></tr>';
+      return;
+    }
+    var rows = state.posts.slice().sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
+    tb.innerHTML = rows.map(function (p) {
+      return '<tr data-id="' + esc(p.id) + '">' +
+        '<td><input data-f="author" value="' + esc(p.author) + '" aria-label="Name"></td>' +
+        '<td class="title"><input data-f="title" value="' + esc(p.title) + '" aria-label="Blog title"></td>' +
+        '<td class="url"><input data-f="url" type="url" value="' + esc(p.url) + '" aria-label="Link"></td>' +
+        '<td><input data-f="date" type="date" value="' + esc(parseDate(p.date) ? iso(parseDate(p.date)) : "") + '" aria-label="Date posted"></td>' +
+        '<td class="num"><input data-f="visitors" type="number" min="0" step="1" value="' + esc(p.visitors) + '" aria-label="Visitors" style="text-align:right"></td>' +
+        "<td>" + statusChip(p, c) + "</td>" +
+        '<td><button class="btn danger" data-del="1" type="button" title="Remove" aria-label="Remove post">✕</button></td>' +
+        "</tr>";
+    }).join("");
+  }
+  var lastResult = null;
+  function renderResults(c) {
+    var r = rank(state.posts, c.start, c.end, c.snap, c.method, c.minV);
+    lastResult = { r: r, c: c };
+    var tb = $("resultsTable").querySelector("tbody");
+    var maxPct = r.ranked.reduce(function (m, x) { return Math.max(m, x.pct); }, 0) || 1;
+    if (!r.ranked.length) {
+      tb.innerHTML = '<tr><td colspan="8" class="empty">No eligible posts for this quarter yet.</td></tr>';
+      $("winner").innerHTML = "";
+    } else {
+      tb.innerHTML = r.ranked.map(function (x) {
+        var u = safeUrl(x.p.url), t = esc(x.p.title || "(untitled)");
+        return '<tr class="' + (x.rank === 1 ? "first" : "") + '">' +
+          '<td class="num">' + x.rank + "</td>" +
+          "<td>" + (u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + t + "</a>" : t) + "</td>" +
+          "<td>" + esc(x.p.author) + "</td>" +
+          "<td>" + iso(x.pub) + "</td>" +
+          '<td class="num">' + fmt(x.visitors, 0) + "</td>" +
+          '<td class="num">' + x.days + "</td>" +
+          '<td class="num">' + fmt(x.score, 1) + "</td>" +
+          '<td class="bar"><div><b>' + fmt(x.pct, 1) + '%</b><i><span style="width:' + (x.pct / maxPct * 100).toFixed(1) + '%"></span></i></div></td>' +
+          "</tr>";
+      }).join("");
+      var w = r.ranked.filter(function (x) { return x.rank === 1; });
+      $("winner").innerHTML = "🏆 " + (w.length > 1 ? "Tie: " : "Winner: ") + w.map(function (x) {
+        return "<strong>" + esc(x.p.title) + "</strong> by <strong>" + esc(x.p.author) + "</strong>";
+      }).join(" and ") + " &middot; " + fmt(w[0].pct, 1) + "% share";
+      $("winner").className = "winner";
+    }
+    if (r.excluded.length) {
+      $("excluded").innerHTML = '<div class="muted">Not ranked this quarter (' + r.excluded.length + "):</div><ul>" +
+        r.excluded.map(function (x) {
+          return "<li>" + esc(x.p.title || "(untitled)") + " — " + esc(x.p.author) + ' <span class="muted">(' + esc(x.reason) + ")</span></li>";
+        }).join("") + "</ul>";
+    } else $("excluded").innerHTML = "";
+  }
+  function render() {
+    var c = settings();
+    renderWindow(c); renderPosts(c); renderResults(c);
+  }
+  function update(rerenderPosts) {
+    save();
+    var c = settings();
+    renderWindow(c);
+    if (rerenderPosts) renderPosts(c);
+    else refreshChips(c);
+    renderResults(c);
+  }
+  function refreshChips(c) {
+    var rows = $("postsTable").querySelectorAll("tbody tr[data-id]");
+    Array.prototype.forEach.call(rows, function (tr) {
+      var p = find(tr.getAttribute("data-id"));
+      if (p) tr.children[5].innerHTML = statusChip(p, c);
+    });
+    $("postCount").textContent = state.posts.length + " post" + (state.posts.length === 1 ? "" : "s");
+  }
+  function find(id) { for (var i = 0; i < state.posts.length; i++) if (state.posts[i].id === id) return state.posts[i]; return null; }
+
+  // ------------------------------------------------------------------ events
+  [["quarter", "quarter"], ["year", "year"], ["method", "method"], ["minVisitors", "minVisitors"],
+   ["shiftDays", "shiftDays"], ["lagDays", "lagDays"], ["snapshot", "snapshot"]].forEach(function (pair) {
+    $(pair[0]).addEventListener("input", function (e) { state.settings[pair[1]] = e.target.value; update(false); });
+  });
+
+  $("addForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var v = $("fVisitors").value.trim();
+    state.posts.push({ id: uid(), author: $("fAuthor").value.trim(), title: $("fTitle").value.trim(),
+                       url: $("fUrl").value.trim(), date: $("fDate").value, visitors: v });
+    $("fTitle").value = ""; $("fUrl").value = ""; $("fVisitors").value = "";
+    $("fTitle").focus();
+    update(true); toast("Post added");
+  });
+
+  var tbody = $("postsTable").querySelector("tbody");
+  tbody.addEventListener("input", function (e) {
+    var f = e.target.getAttribute("data-f"); if (!f) return;
+    var p = find(e.target.closest("tr").getAttribute("data-id")); if (!p) return;
+    p[f] = e.target.value; update(false);
+  });
+  tbody.addEventListener("change", function (e) { if (e.target.getAttribute("data-f") === "date") update(true); });
+  tbody.addEventListener("click", function (e) {
+    if (!e.target.closest("[data-del]")) return;
+    var id = e.target.closest("tr").getAttribute("data-id");
+    state.posts = state.posts.filter(function (p) { return p.id !== id; });
+    update(true); toast("Post removed");
+  });
+
+  $("importBtn").addEventListener("click", function () { $("importFile").click(); });
+  $("importFile").addEventListener("change", function (e) {
+    var file = e.target.files[0]; if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var res = importCSV(String(reader.result));
+        var m = mergePosts(res.posts);
+        update(true);
+        toast("Imported: " + m.added + " added, " + m.updated + " updated" + (res.bad ? ", " + res.bad + " with an unreadable date" : ""));
+      } catch (err) { toast("Import failed: " + err.message); }
+      e.target.value = "";
+    };
+    reader.readAsText(file);
+  });
+  // Merge: a row with the same title + date as an existing post updates it (e.g. visitors filled in later);
+  // anything else is added.
+  function mergePosts(incoming) {
+    var added = 0, updated = 0;
+    incoming.forEach(function (n) {
+      var key = String(n.title).trim().toLowerCase() + "|" + n.date;
+      var hit = null;
+      for (var i = 0; i < state.posts.length; i++) {
+        var p = state.posts[i];
+        if (String(p.title).trim().toLowerCase() + "|" + p.date === key) { hit = p; break; }
+      }
+      if (hit) {
+        if (n.author) hit.author = n.author;
+        if (n.url) hit.url = n.url;
+        if (n.visitors !== "") hit.visitors = n.visitors;
+        updated++;
+      } else { state.posts.push(n); added++; }
+    });
+    return { added: added, updated: updated };
+  }
+
+  $("exportBtn").addEventListener("click", function () {
+    if (!state.posts.length) { toast("Nothing to download yet"); return; }
+    var c = settings();
+    var rows = state.posts.slice().sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); })
+      .map(function (p) { return [p.author, p.title, p.url, p.date, p.visitors]; });
+    download("posts_q" + c.q + "_" + c.y + ".csv", toCSV(["author", "title", "url", "publish_date", "visitors"], rows));
+  });
+
+  $("sampleBtn").addEventListener("click", function () {
+    state.posts = SAMPLE.map(function (r) { return { id: uid(), author: r[0], title: r[1], url: r[2], date: r[3], visitors: r[4] }; });
+    state.settings.quarter = 2; state.settings.year = 2026; state.settings.snapshot = "";
+    renderSettings(); update(true); toast("Sample loaded (Q2 2026)");
+  });
+
+  var clearTimer;
+  $("clearBtn").addEventListener("click", function (e) {
+    var b = e.target;
+    if (b.dataset.armed) {
+      state.posts = []; delete b.dataset.armed; b.textContent = "Clear all"; clearTimeout(clearTimer);
+      update(true); toast("All posts cleared");
+    } else {
+      b.dataset.armed = "1"; b.textContent = "Click again to clear";
+      clearTimer = setTimeout(function () { delete b.dataset.armed; b.textContent = "Clear all"; }, 3000);
+    }
+  });
+
+  $("copyMdBtn").addEventListener("click", function () {
+    if (!lastResult || !lastResult.r.ranked.length) { toast("No results to copy"); return; }
+    var c = lastResult.c;
+    var md = "**Q" + c.q + " " + c.y + " blog ranking** (posts " + iso(c.start) + " to " + iso(c.end) +
+      ", visitors as of " + iso(c.snap) + ", method: " + c.method + ")\n\n" +
+      "| Rank | Title | Author | Published | Visitors | Days live | Score | Share % |\n|---:|---|---|---|---:|---:|---:|---:|\n" +
+      lastResult.r.ranked.map(function (x) {
+        var t = String(x.p.title).replace(/\|/g, "\\|"), u = safeUrl(x.p.url);
+        return "| " + x.rank + " | " + (u ? "[" + t + "](" + u + ")" : t) + " | " + String(x.p.author).replace(/\|/g, "\\|") +
+          " | " + iso(x.pub) + " | " + fmt(x.visitors, 0) + " | " + x.days + " | " + x.score.toFixed(1) + " | " + x.pct.toFixed(1) + " |";
+      }).join("\n") + "\n";
+    copy(md);
+  });
+  function copy(text) {
+    function fallback() {
+      var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); toast("Copied as Markdown"); } catch (e) { toast("Copy failed"); }
+      ta.remove();
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function () { toast("Copied as Markdown"); }, fallback);
+    } else fallback();
+  }
+
+  $("resultsCsvBtn").addEventListener("click", function () {
+    if (!lastResult || !lastResult.r.ranked.length) { toast("No results to download"); return; }
+    var c = lastResult.c;
+    var rows = lastResult.r.ranked.map(function (x) {
+      return [x.rank, x.p.title, x.p.author, iso(x.pub), x.visitors, x.days, x.score.toFixed(4), x.pct.toFixed(2), x.p.url];
+    });
+    download("results_q" + c.q + "_" + c.y + ".csv",
+      toCSV(["rank", "title", "author", "publish_date", "visitors", "days_live", "score", "percentage", "url"], rows));
+  });
+
+  // Point "How it works" at logic.md next to this page when hosted on GitHub Pages / locally.
+  (function () {
+    var h = location.hostname, m = h.match(/^([^.]+)\.github\.io$/), seg = location.pathname.split("/").filter(Boolean)[0];
+    $("logicLink").href = m && seg ? "https://github.com/" + m[1] + "/" + seg + "/blob/main/logic.md" : "../logic.md";
+  })();
+
+  // Default the date field to today for quick entry.
+  $("fDate").value = iso(new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())));
+
+  // Expose the pure functions for automated checks.
+  window.BlogRanking = { eligibilityWindow: eligibilityWindow, rank: rank, parseDate: parseDate, parseCSV: parseCSV, importCSV: importCSV };
+
+  renderSettings();
+  render();
+})();
+</script>
+</body>
+</html>
